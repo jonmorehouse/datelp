@@ -3,7 +3,7 @@ package datelp
 /*
 Tags correspond to known paths that the application looks for a date within.
 
-The OffsetTag applies an offset to some sort of date. For instance this would
+The OffsetClassifier applies an offset to some sort of date. For instance this would
 take something like "next,this,last,ago" and checks for a date.
 
 AdverbTag looks for adverb descriptors such as `tomorrow`, `yesterday` `today`
@@ -20,16 +20,9 @@ type Tag interface {
 	// has a parse
 }
 
-type OffsetTag {
+type OffsetTag struct {
 	index int
-	classified bool
+	valid int
 }
-
-func (o *Offset) Classify(input * InputText) {
-
-}
-
-
-
 
 

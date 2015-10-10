@@ -1,29 +1,21 @@
 package datelp
 
-type InputText interface {
+
+// classifiers are responsible for one thing ... building tags and passing in the appropriate slice of words to tags
+type Classifier interface {
+	//func (c *Classifier) classify(Input)
 }
 
-type TagClassifier interface {
+// this takes in an input and will return a set of tags that correspond to things it found classifiable
+type OffsetClassifier struct {
 
+	// hash table for looking up tags based upon index
+	tags map [int]*Tag
 }
 
-type Classifier struct {
-	input *InputText
-	tags []*Tag
+func (oc *OffsetClassifier) Classify(input Input) {
+	// want to iterate through the input and do things like "fetch previous"
+	// the idea is that this will look for words and if its a valid word will create a tag (and will pass in some extra words into it)
 }
-
-func NewClassifier(input *InputText) *Classifier {
-	return &Classifier{
-		input: input,
-	}
-}
-
-func (c *Classifier) BuildTags() (error) {
-	// iterate through all of the words in  the input text object
-	// for each word check to see if its actually a tag
-}
-
-
-
 
 
