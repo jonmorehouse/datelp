@@ -33,7 +33,7 @@ func TestTextInputFetch(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		words, err := input.Fetch(tc.l, tc.i, tc.r)
+		words, err := input.FetchRange(tc.l, tc.i, tc.r)
 		
 		if tc.err == nil && err != nil {
 			t.Error("Returned an error when it should not have")

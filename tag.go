@@ -1,5 +1,8 @@
 package datelp
 
+import (
+)
+
 /*
 Tags correspond to known paths that the application looks for a date within.
 
@@ -21,8 +24,16 @@ type Tag interface {
 }
 
 type OffsetTag struct {
-	index int
-	valid int
+	offsetType string // ago, this, next, last, before
+	words []string
+
+}
+
+func NewOffsetTag(words []string, offsetType string) *OffsetTag {
+	return &OffsetTag{
+		words: words,
+		offsetType: offsetType,
+	}
 }
 
 

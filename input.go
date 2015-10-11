@@ -10,8 +10,9 @@ import (
 type Input interface {
 	Parse(io.Reader) error
 
-	Fetch(int, int, int) ([]string, error)
-	Move(int)
+	FetchRange(uint, uint, uint) ([]string, error)
+	Fetch(uint) (string, error)
+	Move(int) (uint, error)
 	Reset()
 }
 
@@ -35,6 +36,8 @@ func (t *TextInput) Parse(input io.Reader) (error) {
 
 	for scanner.Scan() {
 		word := scanner.Text()
+		word = StripWord(word)
+
 		t.data = append(t.data, word)
 
 		t.size++
@@ -47,17 +50,18 @@ func (t *TextInput) Reset() {
 	t.index = 0
 }
 
-func (t *TextInput) Move(increment int) {
-	newIndex := uint(int(t.index) + increment)
+func (t *TextInput) Move(increment int) (uint, error) {
+	t.index = uint(int(t.index) + increment)
 
-	if newIndex < 0 {
-		newIndex = 0
+	if t.index < 0 || t.index == t.size {
+		t.index = 0
+		return t.index, errors.New(fmt.Sprintf("Reached end of dataset"))
 	}
 
-	t.index = newIndex
+	return t.index, nil
 }
 
-func (t *TextInput) Fetch(index uint, leftOffset uint, rightOffset uint) ([]string, error) {
+func (t *TextInput) FetchRange(index uint, leftOffset uint, rightOffset uint) ([]string, error) {
 	start := int(index - leftOffset)
 	end := index + rightOffset + 1
 
@@ -68,3 +72,10 @@ func (t *TextInput) Fetch(index uint, leftOffset uint, rightOffset uint) ([]stri
 	return t.data[start:end], nil
 }
 
+func (t *TextInput) Fetch(index uint) (string, error) {
+	if index < 0 || index > t.size {
+		return "", errors.New(fmt.Sprintf("Out of range"))
+	}
+
+	return t.data[index], nil
+}
