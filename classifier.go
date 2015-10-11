@@ -33,6 +33,7 @@ func NewOffsetClassifier() Classifier {
 	rules[2] = OffsetClassificationRule{"this", 0, 1}
 	rules[3] = OffsetClassificationRule{"next", 0, 1}
 	rules[4] = OffsetClassificationRule{"last", 0, 1}
+	rules[5] = OffsetClassificationRule{"after", 2, 2}
 
 	return &OffsetClassifier{
 		tags: make(map[uint]Tag),

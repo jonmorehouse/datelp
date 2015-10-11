@@ -1,6 +1,7 @@
 package datelp
 
 import (
+	"time"
 )
 
 /*
@@ -20,13 +21,13 @@ TimestampTag
 
 */
 type Tag interface {
-	// has a parse
+	Parse() (*time.Time, error)
+
 }
 
 type OffsetTag struct {
 	offsetType string // ago, this, next, last, before
 	words []string
-
 }
 
 func NewOffsetTag(words []string, offsetType string) *OffsetTag {
@@ -36,4 +37,18 @@ func NewOffsetTag(words []string, offsetType string) *OffsetTag {
 	}
 }
 
+func (oc *OffsetTag) Parse() (*time.Time, error) {
+
+	return nil, nil
+}
+
+func (oc *OffsetTag) ParseAgo() (*time.Time, error) {
+
+	return nil, nil
+}
+
+func (oc *OffsetTag) ParseBefore() (*time.Time, error) {
+
+	return nil, nil
+}
 
