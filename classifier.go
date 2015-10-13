@@ -27,7 +27,7 @@ type OffsetClassifier struct {
 }
 
 func NewOffsetClassifier() Classifier {
-	rules := make([]OffsetClassificationRule, 5)
+	rules := make([]OffsetClassificationRule, 6)
 	rules[0] = OffsetClassificationRule{"ago", 2, 0}
 	rules[1] = OffsetClassificationRule{"before", 2, 3}
 	rules[2] = OffsetClassificationRule{"this", 0, 1}

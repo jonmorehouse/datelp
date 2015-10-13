@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"errors"
 	"fmt"
+	"time"
 )
 
 func StripWord(word string) string {
@@ -148,6 +149,94 @@ func ToTimeDelta(words []string) (map[string]int, error) {
 	}
 
 	return delta, nil
+}
+
+func ParseWeekday(words []string) (time.Weekday, error) {
+	weekdays := map[string]time.Weekday{
+		"mon": time.Monday,
+		"monday": time.Monday,
+		"tues": time.Tuesday,
+		"tuesday": time.Tuesday,
+		"wed": time.Wednesday,
+		"wednesday": time.Wednesday,
+		"thurs": time.Thursday,
+		"thursday": time.Thursday,
+		"fri": time.Friday,
+		"friday": time.Friday,
+		"sat": time.Saturday,
+		"saturday": time.Saturday,
+		"sunday": time.Sunday,
+		"sun": time.Sunday,
+	}
+
+	for _, word := range words {
+		weekday, exists := weekdays[word]
+		if !exists {
+			continue
+		}
+
+		return weekday, nil
+	}
+
+
+	return time.Sunday, errors.New("Unable to parse weekday")
+}
+
+func ParseMonth(words []string) (time.Month, error) {
+	mapping := map[string]time.Month {
+		"january": time.January,
+		"jan": time.January,
+		"february": time.February,
+		"feb": time.February,
+		"march": time.March,
+		"mar": time.March,
+		"april": time.April,
+		"apr": time.April,
+		"may": time.May,
+		"june": time.June,
+		"july": time.July,
+		"august": time.August,
+		"aug": time.August,
+		"september": time.September,
+		"sep": time.September,
+		"october": time.October,
+		"oct": time.October,
+		"november": time.November,
+		"nov": time.November,
+		"december": time.December,
+		"dec": time.December,
+	}
+
+	for _, word := range words {
+		month, exists := mapping[word]
+		if !exists {
+			continue
+		}
+
+		// month was found!
+		return month, nil
+	}
+
+	return time.January, errors.New("Unable to parse month")
+}
+
+func ParseInterval(words []string) (string, error) {
+	mapping := map[string]*regexp.Regexp{
+		"day": regexp.MustCompile("day.*"),
+		"week": regexp.MustCompile("week.*"),
+		"month": regexp.MustCompile("month.*"),
+		"year": regexp.MustCompile("year.*"),
+	}
+
+	for _, word := range words {
+		for interval, regex := range mapping {
+			if regex.MatchString(word) {
+				return interval, nil
+			}
+		}
+	}
+
+	return "", errors.New("Unable to parse interval")
 }
 
 
