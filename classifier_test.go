@@ -1,69 +1,182 @@
 package datelp
 
 import (
-	"fmt"
-	"strings"
-	"testing"
+        "testing"
+        "time"
 )
 
-func NewInput(str string) Input {
-	reader := strings.NewReader(str)
-	input := NewTextInput()
-	input.Parse(reader)
 
-	return input
+func TestClassifierOffsetContext(t *testing.T) {
+        testCases := []struct{
+                input string
+                offset OffsetContext 
+        } {
+                {"3 weeks ago", OffsetContext{
+                        interval: INTERVAL_WEEK,
+                        direction: DIRECTION_LEFT,
+                        count: 3,
+                        value: 0,
+                        size: 3,
+                }},
+                {"last wednesday", OffsetContext{
+                        interval: INTERVAL_WEEKDAY,
+                        direction: DIRECTION_LEFT,
+                        count: 1,
+                        value: WEEKDAY_WEDNESDAY,
+                        size: 2,
+                }},
+                {"2 tuesdays ago", OffsetContext{
+                        interval: INTERVAL_WEEKDAY,
+                        direction: DIRECTION_LEFT,
+                        count: 2,
+                        value: WEEKDAY_TUESDAY,
+                        size: 3,
+                }},
+                {"last month", OffsetContext{
+                        interval: INTERVAL_MONTH,
+                        direction: DIRECTION_LEFT,
+                        count: 1,
+                        value: 0,
+                        size: 2,
+                }},
+                {"next june", OffsetContext{
+                        interval: INTERVAL_MONTH,
+                        direction: DIRECTION_RIGHT,
+                        count: 1,
+                        value: MONTH_JUNE,
+                        size: 2,
+                }},
+                {"last july", OffsetContext{
+                        interval: INTERVAL_MONTH,
+                        direction: DIRECTION_LEFT,
+                        count: 1,
+                        value: MONTH_JULY,
+                        size: 2,
+                }},
+                {"2 weeks from today", OffsetContext{
+                        interval: INTERVAL_WEEK,
+                        direction: DIRECTION_RIGHT,
+                        count: 2,
+                        size: 3,
+                }},
+                {"tuesday", OffsetContext{
+                        interval: INTERVAL_WEEKDAY,
+                        direction: DIRECTION_CURRENT,
+                        value: WEEKDAY_TUESDAY,
+                        count: 1,
+                        size: 1,
+                }},
+        }
+
+        for _, tc := range testCases {
+                classifier := Classifier{}
+                iterator := newWordIterator(tc.input)
+                classifier.buildContexts(iterator)
+
+                // since buildContexts is internal we build the context and
+                // then fetch a pointer to the classifier.offset attribute
+                offset := classifier.offset
+                tests := []struct{
+                        expected int
+                        actual int
+                        val string
+                }{
+                        {tc.offset.interval, offset.interval, "interval"},
+                        {tc.offset.direction, offset.direction, "direction"},
+                        {tc.offset.count, offset.count, "count"},
+                        {tc.offset.value, offset.value, "value"},
+                        {tc.offset.truncate, offset.truncate, "truncate"},
+                        {tc.offset.size, offset.size, "size"},
+                }
+
+                for _, test := range tests {
+                        if test.actual != test.expected {
+                                t.Errorf("%s failed. expected: %d actual: %d", test.val, test.expected, test.actual)
+                        }
+                }
+        }
 }
 
-func TestOffsetClassifier(t *testing.T) {
-	// its import to note that the classification system only passes in
-	// "possible" matches where each possible match is a tag. Thus adding
-	// in the "this is not a date" is a valid option and _should_ be a tag
-	inputStr := "This week. This month. this.. year. This is not a date. 4 weeks ago. 2 days before june 5. next wednesday. next month. next June. last july. this"
-	input := NewInput(inputStr)
-	classifier := NewOffsetClassifier()
-	classifier.Classify(input)
+func TestClassifierDateContext(t *testing.T) {
+        testCases := []struct{
+                input string
+                date DateContext
+        } {
+                {"june 1st 2015", DateContext{
+                        size: 3,
+                        monthday: 1,
+                        month: MONTH_JUNE,
+                        weekday: -1,
+                        year: 2015,
+                        synonym: -1,
+                }},
+                {"tomorrow", DateContext{
+                        size: 1,
+                        weekday: -1,
+                        synonym: SYNONYM_TOMORROW,
+                }},
+                {"day after tomorrow", DateContext{
+                        size: 1,
+                        weekday: -1,
+                        synonym: SYNONYM_TOMORROW,
+                }},
+        }
 
-	testCases := []struct{
-		index uint
-		offsetType string
-		tagWords []string
-	}{
-		{0, "this", []string{"this", "week"},},
-		{2, "this", []string{"this", "month"},},
-		{4, "this", []string{"this", "year"},},
-		{6, "this", []string{"this", "is"},},
-		{13, "ago", []string{"4", "weeks", "ago"},},
-		{16, "before", []string{"2", "days", "before", "june", "5"},},
-		{19, "next", []string{"next", "wednesday"},},
-		{21, "next", []string{"next", "month"},},
-		{23, "next", []string{"next", "june"},},
-		{25, "last", []string{"last", "july"},},
-	}
+        for _, tc := range testCases {
+                c := Classifier{}
+                i := newWordIterator(tc.input)
+                c.buildContexts(i)
+                date := c.date
 
-	for _, tc := range testCases {
-		tag, err := classifier.GetTag(tc.index)
-		if err != nil {
-			t.Error(fmt.Sprintf("Missed a classification: %s @ %d", tc.offsetType, tc.index))
-			return
-		}
+                assertions := []struct {
+                        expected int
+                        actual int
+                        message string
+                } {
+                        {tc.date.size, date.size, "size"},
+                        {tc.date.synonym, date.synonym, "synonym"},
+                        {tc.date.weekday, date.weekday, "weekday"},//TODO remove this
+                        {tc.date.month, date.month, "month"},
+                        {tc.date.monthday, date.monthday, "monthday"},
+                        {tc.date.year, date.year, "year"},
+                }
 
-		// cast this back to a specialized offsetTag
-		offsetTag, ok := tag.(*OffsetTag)
-		if !ok || offsetTag == nil {
-			t.Error("Something is wrong with the offsetTag")
-			return
-		}
+                for _, assertion := range assertions {
+                        if assertion.actual != assertion.expected {
+                                t.Errorf("Classifier built context with wrong %s. expected: %d. actual: %d.", 
+                                          assertion.message, assertion.expected, assertion.actual)
+                        }
+                }
+        }
+}
 
-		if offsetTag.offsetType != tc.offsetType {
-			t.Error(fmt.Sprintf("Incorrect OffsetType: %s. Expected: %s", offsetTag.offsetType, tc.offsetType))
-			return
-		}
-	}
+func TestClassifierEndToEnd(t *testing.T) {
+        testCases := []struct{
+                input string
+                expected time.Time
+        }{
+                {"june 2nd", time.Date(time.Now().Year(), time.June, 2, 0, 0, 0, 0, time.UTC)},
+                {"day after tomorrow", time.Now().AddDate(0, 0, 2)},
+                {"day before yesterday", time.Now().AddDate(0, 0, -2)},
+                {"tuesday", time.Now().AddDate(0, 0, 2)},
+                {"next tuesday", time.Now().AddDate(0, 0, 9)},
+                {"this sunday", time.Now()},
+                {"next sunday", time.Now().AddDate(0, 0, 7)},
+                {"today", time.Now()},
+        }
 
-	// check to ensure that the tailing `this` doesn't get classified
-	if len(classifier.GetTags()) != len(testCases) {
-		t.Error("Incorrectly classified a tailing statement")
-		return
-	}
+        for _, tc := range testCases {
+                c := NewClassifier()
+                i := newWordIterator(tc.input)
+                res, _ := c.Parse(i)
+
+                if res == nil {
+                        t.Fatalf("Result object was nil.")
+                }
+
+                if tc.expected.Truncate(time.Hour*24) != res.Date.Truncate(time.Hour*24) {
+                        t.Fatalf("Did not convert \"%s\". Expected: %s Actual: %s", tc.input, tc.expected, res.Date)
+                }
+        }
 }
 

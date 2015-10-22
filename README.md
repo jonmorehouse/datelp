@@ -1,23 +1,45 @@
 # Datelp 
 > A go library for parsing and extracting dates from text
 
-## Supported Use Cases
+## Usage
 
-* next month
-* next week
-* next year
-* next tuesday
+```golang
+package main
 
-* last month
-* last year
-* last tuesday
+import (
+  "datelp"
+  "log"
+)
 
-* 3 days ago
-* 3 months ago
-* 3 years ago
+func main() {
+  input := []string{"next", "monday"}
+  results, err := datelp.Parse(input)
+  if err != nil {
+    log.Info("No dates available")
+  }
+  
+  for _, res := range results {
+    log.Info(res.Position, res.Time)
+  }
 
-* today
-* tomorrow
-* yesterday
+}
+
+
+```
+
+## First Version Supported Formats
+
+~~~ text
+June 1st
+June 1st 2015
+June 1 2015
+
+Tuesday
+next Tuesday
+last Wednesday
+
+Tomorrow
+Yesterday
+~~~
 
 
