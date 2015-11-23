@@ -1,7 +1,10 @@
 # Datelp 
 > A go library for parsing and extracting dates from text
 
+[![Build Status](https://travis-ci.org/jonmorehouse/datelp.svg?branch=master)](https://travis-ci.org/jonmorehouse/sns-ingest)
+
 **DISCLAIMER:** this library is currently a WIP. I'm using this particular version locally in [Datebook]() (a small cli tool for taking notes). Its worth mentioning that an overhaul and official first release are coming in the next few weeks once https://github.com/jonmorehouse/datelp/pull/3 has been finished.
+
 
 ## Usage
 
