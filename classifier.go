@@ -1,95 +1,175 @@
 package datelp
 
 import (
-	"fmt"
-	"errors"
+        "errors"
+        "time"
 )
 
-// classifiers are responsible for one thing ... building tags and passing in the appropriate slice of words to tags
-type Classifier interface {
-	Classify (Input)
-	GetTags() (map[uint]Tag)
-	GetTag(uint) (Tag, error)
+type Classifier struct {
+        offset *OffsetContext
+        date *DateContext
+        start time.Time
 }
 
-type OffsetClassificationRule struct {
-	offsetType string
-	left uint
-	right uint
+func NewClassifier() *Classifier {
+        return &Classifier{}
 }
 
-// this takes in an input and will return a set of tags that correspond to things it found classifiable
-type OffsetClassifier struct {
-	rules []OffsetClassificationRule
+func (c *Classifier) Parse(i Iterator) (*Result, error) {
+        err := c.buildContexts(i)
+        if err != nil || (c.offset.size == 0 && c.date.size == 0) {
+                // neither context could be built, exit and emit an error
+                return nil, errors.New("Unable to build any context. No date parseable")
+        }
 
-	// hash table for looking up tags based upon index
-	tags map [uint]Tag
+        result := &Result{Size: MaxInt(c.offset.size, c.date.size), Date: time.Now()}
+
+        if c.date.isValid() {
+                date, err := c.date.Compile()
+                if err != nil {
+                        return nil, err
+                }
+                result.Date = date
+        }
+
+        date, err := c.offset.Compile(result.Date)
+        if err != nil {
+                return result, nil
+        }
+        result.Date = date
+        
+        return result, nil
 }
 
-func NewOffsetClassifier() Classifier {
-	rules := make([]OffsetClassificationRule, 6)
-	rules[0] = OffsetClassificationRule{"ago", 2, 0}
-	rules[1] = OffsetClassificationRule{"before", 2, 3}
-	rules[2] = OffsetClassificationRule{"this", 0, 1}
-	rules[3] = OffsetClassificationRule{"next", 0, 1}
-	rules[4] = OffsetClassificationRule{"last", 0, 1}
-	rules[5] = OffsetClassificationRule{"after", 2, 2}
+func (c *Classifier) buildContexts(i Iterator) error {
+        errs := 0
+        successes := 0
 
-	return &OffsetClassifier{
-		tags: make(map[uint]Tag),
-		rules: rules,
-	}
+        c.offset = &OffsetContext{
+                interval: 0,
+                count: 1,
+                size: 0,
+        }
+        c.date = &DateContext{
+                size: 0,
+                weekday: -1,
+                synonym: -1,
+        }
+
+        // its worth mentioning that this element loops through the element as
+        // both a date and offset context. The goal here is to be able to
+        // identify each component in isolation without interfering with one
+        // another. When both an offset and date context are found, then we use
+        // the date as the "starting" point for the offset.
+        for {
+                offsetCount, offsetErr := c.parseOffset(i)
+                dateCount, dateErr := c.parseDate(i)
+
+                if offsetErr != nil && dateErr != nil {
+                        errs += 1
+                } else {
+                        successes += MaxInt(offsetCount, dateCount)
+                }
+
+                // if 4 errs in a row have happened or we are at the end of the
+                // iterator, break because it can be assumed that nothing of
+                // importance was actually found
+                if err := i.MoveN(MaxInt(offsetCount, dateCount)); errs == 4 || err != nil {
+                        break
+                }
+        }
+
+        if successes == 0 {
+                return errors.New("Nothing found")
+        }
+
+        return nil
 }
 
-func (oc *OffsetClassifier) Classify(input Input) {
-	handler := func(index uint) int {
-		word, err := input.Fetch(index)
-		if err != nil {
-			return 1
-		}
+func (c *Classifier) parseOffset(i Iterator) (int, error) {
+        if _, err := ClassifyAsCommon(i); err == nil {
+                return 1, nil
+        }
 
-		// look up which particular rule, if any that needs to be
-		// created for this particular word that we are iterating
-		// through
-		for _, rule := range oc.rules {
-			if rule.offsetType != word {
-				continue
-			}
+        if value, err := ClassifyAsDirection(i); err == nil {
+                c.offset.direction = value
+                c.offset.size += 1
+                return 1, nil
+        }
 
-			// if this is a match, go ahead and fetch the words
-			// that are needed to create a tag for it
-			words, err := input.FetchRange(index, rule.left, rule.right)
-			if err != nil {
-				return 1
-			}
+        if value, count, err := ClassifyAsIntegerStem(i); err == nil {
+                c.offset.count = value
+                c.offset.size += count
+                return count, nil
+        }
 
-			oc.tags[index] = NewOffsetTag(words, rule.offsetType)
-			return 1
-		}
+        if value, err := ClassifyAsInterval(i); err == nil {
+                c.offset.interval = value
+                c.offset.size += 1
+                return 1, nil
+        }
 
-		return 1
-	}
-		
-	increment := 0
-	for {
-		index, err := input.Move(increment)
-		if err != nil {
-			break
-		}
+        if value, err := ClassifyAsWeekday(i); err == nil {
+                c.offset.value = value
+                c.offset.interval = INTERVAL_WEEKDAY
+                c.offset.size += 1
+                return 1, nil
+        }
+        
+        if value, err := ClassifyAsMonth(i); err == nil {
+                c.offset.value = value
+                c.offset.interval = INTERVAL_MONTH
+                c.offset.size += 1
+                return 1, nil
+        }
 
-		increment = handler(index)
-	}
+        return 1, errors.New("Unable to parse any valid pattern or value from iterator")
 }
 
-func (oc *OffsetClassifier) GetTags() map[uint]Tag {
-	return oc.tags
+func (c *Classifier) parseDate(i Iterator) (int, error) {
+        // this looks for arbitrary components of a date and attempts to parse
+        // them together into a dateContext which can be compiled and used as the starting point 
+        if _, err := ClassifyAsCommon(i); err == nil {
+                return 1, nil
+        }
+
+        if value, err := ClassifyAsDaySynonym(i); err == nil {
+                c.date.synonym = value
+                c.date.size += 1
+                return 1, nil
+        }
+
+        if value, err := ClassifyAsWeekday(i); err == nil {
+                c.date.weekday = value
+                c.date.size += 1
+                return 1, nil
+        }
+        
+        if value, err := ClassifyAsMonth(i); err == nil {
+                // here's an example of where this sort of thing breaks June
+                // 1st 2015... the second time around this will pick up the 1
+                // as a month :( Need to figure out a way to "partially"
+                // classify things
+                if c.date.month == 0 {
+                        c.date.month = value
+                        c.date.size += 1
+                        return 1, nil
+                }
+        }
+
+        if value, count, err := ClassifyAsDateday(i); err == nil {
+                c.date.monthday = value
+                c.date.size += 1
+                return count, nil
+        }
+
+        if value, count, err := ClassifyAsYear(i); err == nil {
+                c.date.year = value
+                c.date.size += 1
+                return count, nil
+        }
+
+
+        return 1, errors.New("Unable to parse any valid pattern or value from iterator")
 }
 
-func (oc *OffsetClassifier) GetTag(index uint) (Tag, error) {
-	tag, exists := oc.tags[index]
-	if !exists {
-		return tag, errors.New(fmt.Sprintf("Requested tag doesn't exist: %d", index))
-	}
-
-	return tag, nil
-}
