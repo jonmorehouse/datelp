@@ -1,6 +1,8 @@
 # Datelp 
 > A go library for parsing and extracting dates from text
 
+**DISCLAIMER:** this library is currently a WIP. I'm using this particular version locally in [Datebook]() (a small cli tool for taking notes). Its worth mentioning that an overhaul and official first release are coming in the next few weeks once https://github.com/jonmorehouse/datelp/pull/3 has been finished.
+
 ## Usage
 
 ```golang
@@ -12,16 +14,10 @@ import (
 )
 
 func main() {
-  input := []string{"next", "monday"}
-  results, err := datelp.Parse(input)
+  date, err := datelp.Parse("next tuesday")
   if err != nil {
     log.Info("No dates available")
   }
-  
-  for _, res := range results {
-    log.Info(res.Position, res.Time)
-  }
-
 }
 
 
@@ -41,5 +37,4 @@ last Wednesday
 Tomorrow
 Yesterday
 ~~~
-
 
