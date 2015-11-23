@@ -1,24 +1,24 @@
 package datelp
 
 import (
-        "time"
-        "strings"
+	"strings"
+	"time"
 )
 
 type Result struct {
-        Size int
-        Date time.Time
+	Size int
+	Date time.Time
 }
 
 func Parse(input string) (time.Time, error) {
-        classifier := NewClassifier()
-        stringReader := strings.NewReader(input)
-        iterator := NewWordIterator(stringReader)
+	classifier := NewClassifier()
+	stringReader := strings.NewReader(input)
+	iterator := NewWordIterator(stringReader)
 
-        results, err := classifier.Parse(iterator)
-        if err != nil {
-                return time.Now(), err
-        }
+	results, err := classifier.Parse(iterator)
+	if err != nil {
+		return time.Now(), err
+	}
 
-        return results.Date, nil
+	return results.Date, nil
 }
