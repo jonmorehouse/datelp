@@ -1,9 +1,5 @@
 language: go
 go:
-  - 1.4.2
+  - tip
 script:
-  - curl -s https://raw.githubusercontent.com/pote/gpm/v1.3.2/bin/gpm > gpm
-  - chmod +x gpm
-  - ./gpm install
   - go test
-sudo: false
